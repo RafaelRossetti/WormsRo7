@@ -254,14 +254,17 @@ function update(time, delta) {
     if (!currentPlayer) return;
 
     // Manage movement
+    let dir = 0;
     if (this.cursors.left.isDown) {
         currentPlayer.move(-1);
+        dir = -1;
     } else if (this.cursors.right.isDown) {
         currentPlayer.move(1);
+        dir = 1;
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-        currentPlayer.jump();
+        currentPlayer.jump(dir);
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.tabKey)) {
@@ -288,7 +291,7 @@ function handlePointerDown(pointer) {
     if (!gameStarted || projectile) return;
 
     const currentPlayer = players[currentTurnIndex];
-    slingStart = { x: pointer.x, y: pointer.y };
+    slingStart = { x: pointer.worldX, y: pointer.worldY }; // Usa worldX para ignorar problemas de zoom da camera
     isShooting = true;
 }
 
@@ -296,41 +299,45 @@ function handlePointerMove(pointer) {
     if (!isShooting || !gameStarted) return;
 
     const currentPlayer = players[currentTurnIndex];
-    const dx = pointer.x - slingStart.x;
-    const dy = pointer.y - slingStart.y;
+    const dx = pointer.worldX - slingStart.x;
+    const dy = pointer.worldY - slingStart.y;
 
-    const distance = Phaser.Math.Distance.Between(slingStart.x, slingStart.y, pointer.x, pointer.y);
-    const power = Math.min(distance, 150) / 10;
-    const angle = Phaser.Math.Angle.Between(slingStart.x, slingStart.y, pointer.x, pointer.y);
+    const distance = Phaser.Math.Distance.Between(slingStart.x, slingStart.y, pointer.worldX, pointer.worldY);
+    // Permite um arrasto maior para o tiro ficar mais poderoso
+    const power = Math.min(distance, 250) / 10;
+    const angle = Phaser.Math.Angle.Between(slingStart.x, slingStart.y, pointer.worldX, pointer.worldY);
 
-    currentPlayer.showSling(slingStart.x, slingStart.y, pointer.x, pointer.y, power * 10, angle);
+    currentPlayer.showSling(slingStart.x, slingStart.y, pointer.worldX, pointer.worldY, power * 10, angle);
 }
 
 function handlePointerUp(pointer) {
     if (!isShooting || !gameStarted) return;
 
     const currentPlayer = players[currentTurnIndex];
-    const dx = slingStart.x - pointer.x;
-    const dy = slingStart.y - pointer.y;
+    const dx = slingStart.x - pointer.worldX;
+    const dy = slingStart.y - pointer.worldY;
 
-    const distance = Phaser.Math.Distance.Between(slingStart.x, slingStart.y, pointer.x, pointer.y);
-    const power = Math.min(distance, 150) / 10;
-    const angle = Phaser.Math.Angle.Between(pointer.x, pointer.y, slingStart.x, slingStart.y);
+    const distance = Phaser.Math.Distance.Between(slingStart.x, slingStart.y, pointer.worldX, pointer.worldY);
+    const power = Math.min(distance, 250) / 10;
+    const angle = Phaser.Math.Angle.Between(pointer.worldX, pointer.worldY, slingStart.x, slingStart.y);
 
     // Fire Projectile
     const vx = Math.cos(angle) * power;
     const vy = Math.sin(angle) * power;
 
     if (power > 0.5) { // Evitar disparos acidentais com clique rápido
+        const px = currentPlayer.x;
+        const py = currentPlayer.y - 15; // Atirar slightly above para não colidir com si mesmo logo de cara
+
         if (currentWeapon === 'bazooka') {
-            projectile = new Projectile(this, currentPlayer.x, currentPlayer.y - 15, vx, vy, 4, {
-                explosionRadius: 50,
+            projectile = new Projectile(this, px, py, vx, vy, 4, {
+                explosionRadius: currentPlayer.radius * 5, // 5 vezes o tamanho do jogador (50 pixels)
                 damage: 100,
                 type: 'bazooka'
             });
         } else {
-            projectile = new Grenade(this, currentPlayer.x, currentPlayer.y - 15, vx, vy, 5, {
-                explosionRadius: 60,
+            projectile = new Grenade(this, px, py, vx, vy, 5, {
+                explosionRadius: currentPlayer.radius * 5,
                 damage: 80,
                 timer: 3000
             });

@@ -25,20 +25,20 @@ class Player extends Phaser.GameObjects.Container {
         // HP bar background
         this.hpBg = scene.add.rectangle(0, -15, 30, 4, 0x000000);
         this.add(this.hpBg);
-        
+
         // HP bar fill
         this.hpFill = scene.add.rectangle(0, -15, 30, 4, 0x2ecc71);
         this.add(this.hpFill);
 
         // Add to scene
         scene.add.existing(this);
-        
+
         // Physics properties
         this.velocity = { x: 0, y: 0 };
         this.isFalling = true;
         this.radius = 10;
         this.grounded = false;
-        
+
         // Sling preview
         this.slingLine = scene.add.graphics();
         this.add(this.slingLine);
@@ -49,7 +49,7 @@ class Player extends Phaser.GameObjects.Container {
         this.hp = Math.max(0, this.hp - damage);
         const ratio = this.hp / 100;
         this.hpFill.width = 30 * ratio;
-        
+
         if (this.hp <= 0 && this.isAlive) {
             this.die();
         }
@@ -67,7 +67,7 @@ class Player extends Phaser.GameObjects.Container {
 
         // Simple gravity
         this.velocity.y += 0.5;
-        
+
         // Apply horizontal movement (friction)
         this.velocity.x *= 0.9;
 
@@ -99,7 +99,7 @@ class Player extends Phaser.GameObjects.Container {
                 this.velocity.y = 0;
                 this.velocity.x = 0;
                 this.grounded = true;
-                
+
                 // Keep the player on top of ground if they are sinking
                 while (terrain.checkCollision(this.x, this.y, this.radius)) {
                     this.y -= 1;
@@ -118,9 +118,12 @@ class Player extends Phaser.GameObjects.Container {
         }
     }
 
-    jump() {
+    jump(dir = 0) {
         if (this.grounded) {
             this.velocity.y = -8;
+            if (dir !== 0) {
+                this.velocity.x = dir * 6; // Adiciona impulso horizontal
+            }
             this.grounded = false;
         }
     }
@@ -134,16 +137,16 @@ class Player extends Phaser.GameObjects.Container {
     showSling(startX, startY, endX, endY, power, angle) {
         this.slingLine.clear();
         this.slingLine.setVisible(true);
-        
+
         const lineLength = power * 2;
         const opacity = Math.max(0, 1 - (power / 100));
-        
+
         this.slingLine.lineStyle(2, 0xffffff, opacity);
-        
+
         // Draw dotted line
         const dx = endX - startX;
         const dy = endY - startY;
-        
+
         for (let i = 0; i < 10; i++) {
             const t = i / 10;
             const px = -dx * t;
