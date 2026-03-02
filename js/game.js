@@ -60,6 +60,7 @@ function create() {
     scene.input.on('pointerdown', handlePointerDown);
     scene.input.on('pointermove', handlePointerMove);
     scene.input.on('pointerup', handlePointerUp);
+    scene.input.on('pointerupoutside', handlePointerUp); // Garantir disparo se soltar fora do canvas
 
     // Keyboard Events
     scene.cursors = scene.input.keyboard.createCursorKeys();
@@ -97,6 +98,11 @@ function startGame() {
     gameStarted = true;
     startTurnTimer.call(this);
     updateUI();
+
+    // Zoom inicial no primeiro jogador
+    this.time.delayedCall(500, () => {
+        focusCamera(players[currentTurnIndex], 1.8);
+    });
 }
 
 function createTerrain(scene) {
@@ -180,22 +186,48 @@ function findSpawnPosition() {
     let x, y;
     let found = false;
     let attempts = 0;
+    const minDistance = 100; // Distância mínima entre personagens
 
-    while (!found && attempts < 100) {
-        x = Phaser.Math.Between(50, 1150);
+    while (!found && attempts < 200) {
+        x = Phaser.Math.Between(100, 1100);
         y = 0;
 
         // Find ground from top
-        for (let checkY = 0; checkY < 700; checkY += 10) {
+        for (let checkY = 0; checkY < 700; checkY += 5) {
             if (terrain.checkCollision(x, checkY, 5)) {
                 y = checkY - 20;
-                found = true;
+
+                // Verificar proximidade com outros jogadores já spawnados
+                let tooClose = false;
+                for (let p of players) {
+                    if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDistance) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) {
+                    found = true;
+                }
                 break;
             }
         }
         attempts++;
     }
+
+    // Fallback se não achar lugar ideal
+    if (!found) {
+        x = Phaser.Math.Between(200, 1000);
+        y = 300;
+    }
     return { x, y };
+}
+
+function focusCamera(player, zoom = 1.6) {
+    if (!player) return;
+    const scene = player.scene;
+    scene.cameras.main.pan(player.x, player.y, 800, 'Power2');
+    scene.cameras.main.zoomTo(zoom, 800);
 }
 
 function update(time, delta) {
@@ -272,18 +304,23 @@ function handlePointerUp(pointer) {
     const vx = Math.cos(angle) * power;
     const vy = Math.sin(angle) * power;
 
-    if (currentWeapon === 'bazooka') {
-        projectile = new Projectile(this, currentPlayer.x, currentPlayer.y - 15, vx, vy, 4, {
-            explosionRadius: 50,
-            damage: 100,
-            type: 'bazooka'
-        });
-    } else {
-        projectile = new Grenade(this, currentPlayer.x, currentPlayer.y - 15, vx, vy, 5, {
-            explosionRadius: 60,
-            damage: 80,
-            timer: 3000
-        });
+    if (power > 0.5) { // Evitar disparos acidentais com clique rápido
+        if (currentWeapon === 'bazooka') {
+            projectile = new Projectile(this, currentPlayer.x, currentPlayer.y - 15, vx, vy, 4, {
+                explosionRadius: 50,
+                damage: 100,
+                type: 'bazooka'
+            });
+        } else {
+            projectile = new Grenade(this, currentPlayer.x, currentPlayer.y - 15, vx, vy, 5, {
+                explosionRadius: 60,
+                damage: 80,
+                timer: 3000
+            });
+        }
+
+        // Retirar zoom para acompanhar o tiro
+        this.cameras.main.zoomTo(1.0, 1000);
     }
 
     currentPlayer.hideSling();
@@ -291,7 +328,7 @@ function handlePointerUp(pointer) {
     slingStart = null;
 
     // Stop the turn timer when shot
-    if (turnTimerEvent) turnTimerEvent.remove();
+    if (projectile && turnTimerEvent) turnTimerEvent.remove();
 }
 
 function nextTurn() {
@@ -318,6 +355,9 @@ function nextTurn() {
     currentTurnIndex = nextIndex;
     startTurnTimer.call(this);
     updateUI();
+
+    // Zoom no novo jogador
+    focusCamera(players[currentTurnIndex], 1.8);
 }
 
 function startTurnTimer() {
