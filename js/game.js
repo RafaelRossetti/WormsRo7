@@ -57,10 +57,10 @@ function create() {
     createTerrain(scene);
 
     // Input Events
-    scene.input.on('pointerdown', handlePointerDown);
-    scene.input.on('pointermove', handlePointerMove);
-    scene.input.on('pointerup', handlePointerUp);
-    scene.input.on('pointerupoutside', handlePointerUp); // Garantir disparo se soltar fora do canvas
+    scene.input.on('pointerdown', handlePointerDown, scene);
+    scene.input.on('pointermove', handlePointerMove, scene);
+    scene.input.on('pointerup', handlePointerUp, scene);
+    scene.input.on('pointerupoutside', handlePointerUp, scene); // Garantir disparo se soltar fora do canvas
 
     // Keyboard Events
     scene.cursors = scene.input.keyboard.createCursorKeys();
@@ -186,7 +186,7 @@ function findSpawnPosition() {
     let x, y;
     let found = false;
     let attempts = 0;
-    const minDistance = 100; // Distância mínima entre personagens
+    const minDistance = 80; // Distância mínima horizontal entre personagens
 
     while (!found && attempts < 200) {
         x = Phaser.Math.Between(100, 1100);
@@ -195,30 +195,39 @@ function findSpawnPosition() {
         // Find ground from top
         for (let checkY = 0; checkY < 700; checkY += 5) {
             if (terrain.checkCollision(x, checkY, 5)) {
-                y = checkY - 20;
-
                 // Verificar proximidade com outros jogadores já spawnados
                 let tooClose = false;
                 for (let p of players) {
-                    if (Phaser.Math.Distance.Between(x, y, p.x, p.y) < minDistance) {
+                    if (Math.abs(x - p.x) < minDistance) {
                         tooClose = true;
                         break;
                     }
                 }
 
                 if (!tooClose) {
+                    y = checkY - 20;
                     found = true;
                 }
-                break;
+                break; // Achou terreno, para de descer o Y
             }
         }
         attempts++;
     }
 
-    // Fallback se não achar lugar ideal
+    // Fallback se não achar lugar ideal (espalhando se preciso)
     if (!found) {
         x = Phaser.Math.Between(200, 1000);
         y = 300;
+        let attemptFallback = 0;
+        while (attemptFallback < 20) {
+            let tooClose = false;
+            for (let p of players) {
+                if (Math.abs(x - p.x) < minDistance) tooClose = true;
+            }
+            if (!tooClose) break;
+            x = Phaser.Math.Between(200, 1000);
+            attemptFallback++;
+        }
     }
     return { x, y };
 }
@@ -226,8 +235,16 @@ function findSpawnPosition() {
 function focusCamera(player, zoom = 1.6) {
     if (!player) return;
     const scene = player.scene;
-    scene.cameras.main.pan(player.x, player.y, 800, 'Power2');
-    scene.cameras.main.zoomTo(zoom, 800);
+
+    // Faz o pan e zoom in no jogador
+    scene.cameras.main.pan(player.x, player.y, 500, 'Power2');
+    scene.cameras.main.zoomTo(zoom, 500);
+
+    // Zoom out de volta para a tela cheia após visualizar o jogador
+    scene.time.delayedCall(1500, () => {
+        scene.cameras.main.zoomTo(1.0, 500);
+        scene.cameras.main.pan(600, 350, 500, 'Power2'); // 600, 350 é o centro da tela (1200x700)
+    });
 }
 
 function update(time, delta) {
@@ -319,8 +336,9 @@ function handlePointerUp(pointer) {
             });
         }
 
-        // Retirar zoom para acompanhar o tiro
-        this.cameras.main.zoomTo(1.0, 1000);
+        // Retirar zoom e recentralizar para acompanhar o campo de batalha inteiro
+        this.cameras.main.zoomTo(1.0, 800);
+        this.cameras.main.pan(600, 350, 800, 'Power2');
     }
 
     currentPlayer.hideSling();
