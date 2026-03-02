@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worms Web Clone - Local Multiplayer</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer" class="hidden">
+        <div id="wind-container">
+            <div id="wind-label">VENTO</div>
+            <div id="wind-arrow">→</div>
+            <div id="wind-value">0</div>
+        </div>
+        <div id="turn-timer">15</div>
+        <div id="hud-right">
+            <div id="weapon-info">
+                <span id="weapon-name">BAZUCA</span>
+            </div>
+            <div id="player-info">
+                <span id="current-player-name">Jogador 1</span>
+                <span id="current-player-score">0 pts</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div id="start-menu" class="menu-overlay">
+        <div class="menu-content">
+            <h1>WORMS WEB</h1>
+            <p>Selecione o número de jogadores:</p>
+            <div class="player-selection">
+                <button class="btn-selection" data-players="2">2 Jogadores</button>
+                <button class="btn-selection" data-players="3">3 Jogadores</button>
+                <button class="btn-selection" data-players="4">4 Jogadores</button>
+            </div>
+            <div class="settings">
+                <p>Membros por equipe:</p>
+                <select id="team-size">
+                    <option value="2">2 Personagens</option>
+                    <option value="3">3 Personagens</option>
+                    <option value="4" selected>4 Personagens</option>
+                </select>
+            </div>
+            <button id="btn-start" class="btn-primary">INICIAR PARTIDA</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/player.js"></script>
+    <script src="js/weapon.js"></script>
+    <script src="js/game.js"></script>
+</body>
+
+</html>
