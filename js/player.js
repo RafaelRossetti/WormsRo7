@@ -39,9 +39,9 @@ class Player extends Phaser.GameObjects.Container {
         this.radius = 10;
         this.grounded = false;
 
-        // Sling preview
+        // Sling preview — scene-level Graphics so coordinates are in world space
         this.slingLine = scene.add.graphics();
-        this.add(this.slingLine);
+        this.slingLine.setDepth(100);
         this.slingLine.setVisible(false);
     }
 
@@ -58,7 +58,6 @@ class Player extends Phaser.GameObjects.Container {
     die() {
         this.isAlive = false;
         this.setVisible(false);
-        // Dispatch death event or handle in game loop
         this.scene.events.emit('playerDied', this);
     }
 
@@ -95,7 +94,6 @@ class Player extends Phaser.GameObjects.Container {
                 this.velocity.y = 0;
                 this.grounded = true;
             } else {
-                // Real collision
                 this.velocity.y = 0;
                 this.velocity.x = 0;
                 this.grounded = true;
@@ -114,7 +112,7 @@ class Player extends Phaser.GameObjects.Container {
 
         // Check for out of bounds
         if (this.y > this.scene.scale.height + 100) {
-            this.updateHP(100); // Instant death
+            this.updateHP(100);
         }
     }
 
@@ -122,7 +120,7 @@ class Player extends Phaser.GameObjects.Container {
         if (this.grounded) {
             this.velocity.y = -8;
             if (dir !== 0) {
-                this.velocity.x = dir * 6; // Adiciona impulso horizontal
+                this.velocity.x = dir * 6;
             }
             this.grounded = false;
         }
@@ -138,25 +136,41 @@ class Player extends Phaser.GameObjects.Container {
         this.slingLine.clear();
         this.slingLine.setVisible(true);
 
-        const lineLength = power * 2;
-        const opacity = Math.max(0, 1 - (power / 100));
+        // The launch direction is OPPOSITE to the drag direction
+        const launchAngle = angle + Math.PI;
+        const speed = power / 10; // normalised launch speed matching handlePointerUp
 
-        this.slingLine.lineStyle(2, 0xffffff, opacity);
+        // Simulate trajectory using same physics as Projectile
+        const gravity = 0.4;
+        let simVX = Math.cos(launchAngle) * speed;
+        let simVY = Math.sin(launchAngle) * speed;
+        let simX = this.x;
+        let simY = this.y - 15; // launch point matches handlePointerUp offset
 
-        // Draw dotted line
-        const dx = endX - startX;
-        const dy = endY - startY;
+        const totalDots = 30;
 
-        for (let i = 0; i < 10; i++) {
-            const t = i / 10;
-            const px = -dx * t;
-            const py = -dy * t;
-            this.slingLine.fillStyle(0xffffff, opacity * (1 - t));
-            this.slingLine.fillCircle(px, py, 2);
+        for (let i = 0; i < totalDots; i++) {
+            // Advance simulation by one frame
+            simVY += gravity;
+            simX += simVX;
+            simY += simVY;
+
+            // Gradient: start colour (bright cyan) -> end colour (orange-red)
+            const t = i / totalDots;
+            const r = Math.floor(0 + (255 - 0) * t);
+            const g = Math.floor(230 + (100 - 230) * t);
+            const b = Math.floor(255 + (50 - 255) * t);
+            const dotColor = (r << 16) | (g << 8) | b;
+            const dotAlpha = 1.0 - t * 0.7;
+
+            // Dotted line: small filled circles
+            this.slingLine.fillStyle(dotColor, dotAlpha);
+            this.slingLine.fillCircle(simX, simY, 3 - t * 1.5);
         }
     }
 
     hideSling() {
+        this.slingLine.clear();
         this.slingLine.setVisible(false);
     }
 }
